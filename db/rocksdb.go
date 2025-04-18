@@ -605,6 +605,10 @@ func (d *RocksDB) GetAndResetConnectBlockStats() string {
 }
 
 func (d *RocksDB) processAddressesBitcoinType(block *bchain.Block, addresses addressesMap, txAddressesMap map[string]*TxAddresses, balances map[string]*AddrBalance, gf *bchain.GolombFilter) error {
+
+	var dust big.Int
+	dust.SetInt64(546)
+
 	blockTxIDs := make([][]byte, len(block.Txs))
 	blockTxAddresses := make([]*TxAddresses, len(block.Txs))
 	// first process all outputs so that inputs can refer to txs in this block
@@ -630,6 +634,12 @@ func (d *RocksDB) processAddressesBitcoinType(block *bchain.Block, addresses add
 			output := &tx.Vout[i]
 			tao := &ta.Outputs[i]
 			tao.ValueSat = output.ValueSat
+
+			// skip dust
+			if tao.ValueSat.Cmp(&dust) <= 0 {
+				continue
+			}
+
 			addrDesc, err := d.chainParser.GetAddrDescFromVout(output)
 			if err != nil || len(addrDesc) == 0 || len(addrDesc) > maxAddrDescLen {
 				if err != nil {
@@ -642,6 +652,7 @@ func (d *RocksDB) processAddressesBitcoinType(block *bchain.Block, addresses add
 				}
 				continue
 			}
+
 			if gf != nil {
 				gf.AddAddrDesc(addrDesc, tx)
 			}
@@ -733,6 +744,12 @@ func (d *RocksDB) processAddressesBitcoinType(block *bchain.Block, addresses add
 				tai.Txid = input.Txid
 				tai.Vout = input.Vout
 			}
+
+			// skip dust
+			if tai.ValueSat.Cmp(&dust) <= 0 {
+				continue
+			}
+
 			if len(spentOutput.AddrDesc) == 0 {
 				if !logged {
 					glog.V(1).Infof("rocksdb: height %d, tx %v, input tx %v vout %v skipping empty address", block.Height, tx.Txid, input.Txid, input.Vout)
