@@ -653,6 +653,11 @@ func (d *RocksDB) processAddressesBitcoinType(block *bchain.Block, addresses add
 				continue
 			}
 
+			// skip taproot
+			if addrDesc.IsTaproot() {
+				continue
+			}
+
 			if gf != nil {
 				gf.AddAddrDesc(addrDesc, tx)
 			}
